@@ -1,10 +1,11 @@
-import java.util.*;
+package battleship;
 
+import java.util.*;
 public class Main {
 
     private static final int GRID_SIZE = 10;
     private static final char WATER = '~';
-    private static final char SHIP = '0';
+    private static final char SHIP = 'O';
     private static final String[] SHIP_NAMES = {
             "Aircraft Carrier",
             "Battleship",
@@ -18,12 +19,12 @@ public class Main {
 
     public static void main(String[] args) {
         initializeGameField();
+        printGameField();
 
         for(int i = 0; i < SHIP_NAMES.length; i++) {
             boolean placed = false;
             while(!placed) {
-                printGameField();
-                System.out.printf("Enter the coordinates of the %s:%n", SHIP_NAMES[i]);
+                System.out.printf("Enter the coordinates of the %s (%d cells):%n", SHIP_NAMES[i],SHIP_SIZES[i]);
                 String[] input = scanner.nextLine().toUpperCase().split(" ");
                 if (input.length != 2) {
                     System.out.println("Incorrect input. Try again:");
@@ -38,11 +39,11 @@ public class Main {
 
                 if (placeShip(start[0], start[1], end[0], end[1], SHIP_SIZES[i])) {
                     placed = true;
+                    printGameField();
                 }
             }
         }
 
-        printGameField();
         System.out.println("All ships have been placed!");
     }
 
