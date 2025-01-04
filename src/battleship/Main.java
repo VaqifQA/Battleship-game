@@ -18,12 +18,55 @@ public class Main {
     };
     private static final int[] SHIP_SIZES = {5, 4, 3, 3, 2};
     private static final char[][] board = new char[GRID_SIZE][GRID_SIZE];
+    private static final char[][] foggyBoard = new char[GRID_SIZE][GRID_SIZE];
     private static final Scanner scanner = new Scanner(System.in);
+    private static final Map<String, Integer> shipHealth = new HashMap<>();
+    private static final Map<String, List<int[]>> shipCoordinates = new HashMap<>();
 
     public static void main(String[] args) {
         initializeGameField();
-        printGameField();
+        initializeShipHealth();
+        printGameField(board);
 
+        placeAllShips();
+        System.out.println("All ships have been placed!\nThe game starts!");
+        printGameField(foggyBoard);
+
+        playGame();
+    }
+
+    private static void initializeGameField() {
+        for (int i = 0; i < GRID_SIZE; i++) {
+            for (int j = 0; j < GRID_SIZE; j++) {
+                board[i][j] = WATER;
+                foggyBoard[i][j] = WATER;
+            }
+        }
+    }
+
+    private static void initializeShipHealth() {
+        for (int i = 0; i < SHIP_NAMES.length; i++) {
+            shipHealth.put(SHIP_NAMES[i], SHIP_SIZES[i]);
+        }
+    }
+
+    private static void printGameField(char[][] field) {
+        System.out.print("  ");
+        for (int i = 1; i <= GRID_SIZE; i++) {
+            System.out.print(i + " ");
+        }
+        System.out.println();
+
+        for (int i = 0; i < GRID_SIZE; i++) {
+            System.out.print((char) ('A' + i) + " ");
+            for (int j = 0; j < GRID_SIZE; j++) {
+                System.out.print(field[i][j] + " ");
+            }
+            System.out.println();
+        }
+    }
+
+    private static void placeAllShips() {
         for (int i = 0; i < SHIP_NAMES.length; i++) {
             boolean placed = false;
             while (!placed) {
@@ -40,55 +83,15 @@ public class Main {
                     continue;
                 }
 
-                if (placeShip(start[0], start[1], end[0], end[1], SHIP_SIZES[i])) {
+                if (placeShip(SHIP_NAMES[i], start[0], start[1], end[0], end[1], SHIP_SIZES[i])) {
                     placed = true;
-                    printGameField();
+                    printGameField(board);
                 }
             }
         }
-
-        System.out.println("All ships have been placed!\n The game starts!");
-
-        boolean gameRunning = true;
-        while(gameRunning) {
-            System.out.println("Take a shot!");
-            String input = scanner.nextLine().toUpperCase();
-            int[] shot = parseCoordinates(input);
-            if (shot == null) {
-                System.out.println("Error! You entered the wrong coordinates! Try again:");
-                continue;
-            }
-            gameRunning = takeShot(shot[0], shot[1]);
-            printGameField();
-        }
     }
 
-    private static void initializeGameField() {
-        for (int i = 0; i < GRID_SIZE; i++) {
-            for (int j = 0; j < GRID_SIZE; j++) {
-                board[i][j] = WATER;
-            }
-        }
-    }
-
-    private static void printGameField() {
-        System.out.print("  ");
-        for (int i = 1; i <= GRID_SIZE; i++) {
-            System.out.print(i + " ");
-        }
-        System.out.println();
-
-        for (int i = 0; i < GRID_SIZE; i++) {
-            System.out.print((char) ('A' + i) + " ");
-            for (int j = 0; j < GRID_SIZE; j++) {
-                System.out.print(board[i][j] + " ");
-            }
-            System.out.println();
-        }
-    }
-
-    private static boolean placeShip(int row1, int col1, int row2, int col2, int expectedLength) {
-
+    private static boolean placeShip(String shipName, int row1, int col1, int row2, int col2, int expectedLength) {
         if (row1 != row2 && col1 != col2) {
             System.out.println("Error! Wrong ship location! Try again:");
             return false;
@@ -97,7 +100,7 @@ public class Main {
         int length = (row1 == row2) ? Math.abs(col2 - col1) + 1 : Math.abs(row2 - row1) + 1;
 
         if (length != expectedLength) {
-            System.out.printf("Error! Wrong length of the %s! Try again:%n", SHIP_NAMES[SHIP_SIZES.length - expectedLength]);
+            System.out.printf("Error! Wrong length of the %s! Try again:%n", shipName);
             return false;
         }
 
@@ -111,11 +114,14 @@ public class Main {
             return false;
         }
 
+        List<int[]> coordinates = new ArrayList<>();
         for (int i = startRow; i <= endRow; i++) {
             for (int j = startCol; j <= endCol; j++) {
+                coordinates.add(new int[]{i, j});
                 board[i][j] = SHIP;
             }
         }
+        shipCoordinates.put(shipName, coordinates);
         return true;
     }
 
@@ -148,29 +154,74 @@ public class Main {
         return true;
     }
 
-    private static boolean takeShot(int row, int col) {
+    private static void playGame() {
+        boolean gameRunning = true;
+        while (gameRunning) {
+            System.out.println("Take a shot!");
+            String input = scanner.nextLine().toUpperCase();
+            int[] shot = parseCoordinates(input);
 
-        if (board[row][col] == SHIP) {
-            board[row][col] = HIT;
-            System.out.println("You hit a ship!");
-        } else if (board[row][col] == WATER) {
-            board[row][col] = MISS;
-            System.out.println("You missed!");
-        } else {
-            System.out.println("You already shot here. Try again:");
-            return true;
-        }
+            if (shot == null) {
+                System.out.println("Error! You entered wrong coordinates! Try again:");
+                continue;
+            }
 
-        for (char[] rowData : board) {
-            for (char cell : rowData) {
-                if (cell == SHIP) {
-                    return true;
+            int row = shot[0];
+            int col = shot[1];
+
+            if (board[row][col] == SHIP) {
+                foggyBoard[row][col] = HIT;
+                board[row][col] = HIT;
+                System.out.println("You hit a ship!");
+                if (checkAndHandleSunkShip(row, col)) {
+                    System.out.println("You sank a ship! Specify a new target:");
                 }
+            } else if (board[row][col] == WATER) {
+                foggyBoard[row][col] = MISS;
+                board[row][col] = MISS;
+                System.out.println("You missed!");
+            } else {
+                System.out.println("You already shot here. Try again:");
+            }
+
+            printGameField(foggyBoard);
+
+            if (checkWinCondition()) {
+                gameRunning = false;
             }
         }
+    }
 
-        System.out.println("Congratulations! You sank all the ships!");
+    private static boolean checkAndHandleSunkShip(int row, int col) {
+        for (String ship : SHIP_NAMES) {
+            List<int[]> coordinates = shipCoordinates.get(ship);
+            boolean isSunk = true;
+
+            for (int[] coordinate : coordinates) {
+                if (board[coordinate[0]][coordinate[1]] == SHIP) {
+                    isSunk = false;
+                    break;
+                }
+            }
+
+            if (isSunk) {
+                shipHealth.put(ship, 0); // Mark the ship as sunk
+                System.out.println("You sank the " + ship + "!");
+                return true;
+            }
+        }
         return false;
     }
 
+    private static boolean checkWinCondition() {
+        for (int i = 0; i < GRID_SIZE; i++) {
+            for (int j = 0; j < GRID_SIZE; j++) {
+                if (board[i][j] == SHIP) {
+                    return false; // If there are still ships left, game isn't over.
+                }
+            }
+        }
+        System.out.println("You sank the last ship. You won. Congratulations!");
+        return true; // All ships are sunk, player wins.
+    }
 }
