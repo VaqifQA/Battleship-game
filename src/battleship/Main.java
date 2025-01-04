@@ -1,11 +1,14 @@
 package battleship;
 
 import java.util.*;
+
 public class Main {
 
     private static final int GRID_SIZE = 10;
     private static final char WATER = '~';
     private static final char SHIP = 'O';
+    private static final char HIT = 'X';
+    private static final char MISS = 'M';
     private static final String[] SHIP_NAMES = {
             "Aircraft Carrier",
             "Battleship",
@@ -21,10 +24,10 @@ public class Main {
         initializeGameField();
         printGameField();
 
-        for(int i = 0; i < SHIP_NAMES.length; i++) {
+        for (int i = 0; i < SHIP_NAMES.length; i++) {
             boolean placed = false;
-            while(!placed) {
-                System.out.printf("Enter the coordinates of the %s (%d cells):%n", SHIP_NAMES[i],SHIP_SIZES[i]);
+            while (!placed) {
+                System.out.printf("Enter the coordinates of the %s (%d cells):%n", SHIP_NAMES[i], SHIP_SIZES[i]);
                 String[] input = scanner.nextLine().toUpperCase().split(" ");
                 if (input.length != 2) {
                     System.out.println("Incorrect input. Try again:");
@@ -44,7 +47,20 @@ public class Main {
             }
         }
 
-        System.out.println("All ships have been placed!");
+        System.out.println("All ships have been placed!\n The game starts!");
+
+        boolean gameRunning = true;
+        while(gameRunning) {
+            System.out.println("Take a shot!");
+            String input = scanner.nextLine().toUpperCase();
+            int[] shot = parseCoordinates(input);
+            if (shot == null) {
+                System.out.println("Error! You entered the wrong coordinates! Try again:");
+                continue;
+            }
+            gameRunning = takeShot(shot[0], shot[1]);
+            printGameField();
+        }
     }
 
     private static void initializeGameField() {
@@ -130,6 +146,31 @@ public class Main {
             }
         }
         return true;
+    }
+
+    private static boolean takeShot(int row, int col) {
+
+        if (board[row][col] == SHIP) {
+            board[row][col] = HIT;
+            System.out.println("You hit a ship!");
+        } else if (board[row][col] == WATER) {
+            board[row][col] = MISS;
+            System.out.println("You missed!");
+        } else {
+            System.out.println("You already shot here. Try again:");
+            return true;
+        }
+
+        for (char[] rowData : board) {
+            for (char cell : rowData) {
+                if (cell == SHIP) {
+                    return true;
+                }
+            }
+        }
+
+        System.out.println("Congratulations! You sank all the ships!");
+        return false;
     }
 
 }
